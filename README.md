@@ -8,14 +8,6 @@ Add this line to your application's Gemfile:
 gem 'rack-tracer'
 ```
 
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
-
-    $ gem install rack-tracer
-
 ## Usage
 
 ```ruby
