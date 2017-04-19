@@ -16,6 +16,17 @@ OpenTracing.global_tracer = TracerImplementation.new
 
 require 'rack/tracer'
 use Rack::Tracer
+```
+
+You can access the created span using
+```ruby
+env['rack.span']
+```
+
+You can also add a start span callback
+```ruby
+use Rack::Tracer, on_start_span: Proc.new {|span| do_something(span) }
+```
 
 ## Development
 

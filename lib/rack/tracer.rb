@@ -5,9 +5,10 @@ module Rack
     REQUEST_URI = 'REQUEST_URI'.freeze
     REQUEST_METHOD = 'REQUEST_METHOD'.freeze
 
-    def initialize(app, tracer = OpenTracing.global_tracer)
+    def initialize(app, tracer: OpenTracing.global_tracer, on_start_span: nil)
       @app = app
       @tracer = tracer
+      @on_start_span = on_start_span
     end
 
     def call(env)
@@ -24,6 +25,10 @@ module Rack
           'http.uri' => env[REQUEST_URI] # For zipkin, not OT convention
         }
       )
+
+      if @on_start_span
+        @on_start_span.call(span)
+      end
 
       env['rack.span'] = span
 

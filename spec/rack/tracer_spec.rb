@@ -3,7 +3,7 @@ require 'spec_helper'
 RSpec.describe Rack::Tracer do
   let(:logger) { ArrayLogger.new }
   let(:tracer) { Logasm::Tracer.new(logger) }
-  let(:middleware) { described_class.new(app, tracer) }
+  let(:on_start_span) { spy }
 
   let(:ok_response) { [200, {'Content-Type' => 'application/json'}, ['{"ok": true}']] }
 
@@ -32,6 +32,11 @@ RSpec.describe Rack::Tracer do
         ok_response
       end
     end
+
+    it 'calls on_start_span callback' do
+      respond_with { ok_response }
+      expect(on_start_span).to have_received(:call).with(instance_of(Logasm::Tracer::Span))
+    end
   end
 
   context 'when already traced request' do
@@ -59,10 +64,15 @@ RSpec.describe Rack::Tracer do
         ok_response
       end
     end
+
+    it 'calls on_start_span callback' do
+      respond_with { ok_response }
+      expect(on_start_span).to have_received(:call).with(instance_of(Logasm::Tracer::Span))
+    end
   end
 
   def respond_with(&app)
-    middleware = described_class.new(app, tracer)
+    middleware = described_class.new(app, tracer: tracer, on_start_span: on_start_span)
     middleware.call(env)
   end
 end
