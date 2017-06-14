@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.summary       = %q{Rack OpenTracing middleware}
   spec.description   = %q{}
-  spec.homepage      = 'https://github.com/salemove/rack-tracer'
+  spec.homepage      = 'https://github.com/opentracing-contrib/ruby-rack-tracer'
   spec.license       = 'MIT'
 
   spec.files         = `git ls-files -z`.split("\x0").reject do |f|
