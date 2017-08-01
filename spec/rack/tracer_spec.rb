@@ -43,7 +43,7 @@ RSpec.describe Rack::Tracer do
     let(:parent_span_name) { 'parent span' }
     let(:parent_span) { tracer.start_span(parent_span_name) }
 
-    before { tracer.inject(parent_span.context, OpenTracing::FORMAT_RACK, env) }
+    before { inject(parent_span.context, env) }
 
     it 'starts a child trace' do
       respond_with { ok_response }
@@ -74,5 +74,13 @@ RSpec.describe Rack::Tracer do
   def respond_with(&app)
     middleware = described_class.new(app, tracer: tracer, on_start_span: on_start_span)
     middleware.call(env)
+  end
+
+  def inject(span_context, env)
+    carrier = Hash.new
+    tracer.inject(span_context, OpenTracing::FORMAT_RACK, carrier)
+    carrier.each do |k, v|
+      env['HTTP_' + k.upcase.gsub('-', '_')] = v
+    end
   end
 end
