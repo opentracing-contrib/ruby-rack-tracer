@@ -5,10 +5,19 @@ module Rack
     REQUEST_URI = 'REQUEST_URI'.freeze
     REQUEST_METHOD = 'REQUEST_METHOD'.freeze
 
-    def initialize(app, tracer: OpenTracing.global_tracer, on_start_span: nil)
+    # Create a new Rack Tracer middleware.
+    #
+    # @param app The Rack application/middlewares stack.
+    # @param tracer [OpenTracing::Tracer] A tracer to be used when start_span, and extract
+    #        is called.
+    # @param on_start_span [Proc, nil] A callback evaluated after a new span is created.
+    # @param errors [Array<Class>] An array of error classes to be captured by the tracer
+    #        as errors. Errors are **not** muted by the middleware, they're re-raised afterwards.
+    def initialize(app, tracer: OpenTracing.global_tracer, on_start_span: nil, errors: [StandardError])
       @app = app
       @tracer = tracer
       @on_start_span = on_start_span
+      @errors = errors
     end
 
     def call(env)
@@ -39,6 +48,10 @@ module Rack
           span.set_tag('route', route)
         end
       end
+    rescue *@errors => e
+      span.set_tag('error', true)
+      span.log(event: 'error', :'error.object' => e)
+      raise
     ensure
       span.finish
     end

@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'timeout'
 
 RSpec.describe Rack::Tracer do
   let(:logger) { ArrayLogger.new }
@@ -68,6 +69,39 @@ RSpec.describe Rack::Tracer do
     it 'calls on_start_span callback' do
       respond_with { ok_response }
       expect(on_start_span).to have_received(:call).with(instance_of(Logasm::Tracer::Span))
+    end
+  end
+
+  context 'when an exception bubbles-up through the middlewares' do
+    it 'finishes the span' do
+      expect { respond_with { |env| raise Timeout::Error } }.to raise_error { |_|
+        msg, _ = logger.calls.last
+
+        expect(msg).to eq("Span [#{method}] finished")
+      }
+    end
+
+    it 'marks the span as failed' do
+      expect { respond_with { |env| raise Timeout::Error } }.to raise_error { |_|
+        _, trace_info = logger.calls.last
+
+        expect(trace_info[:trace]['error']).to eq(true)
+      }
+    end
+
+    it 'logs the error' do
+      exception = Timeout::Error.new
+      expect { respond_with { |env| raise exception } }.to raise_error { |thrown_exception|
+        msg, trace_info = logger.calls.find { |d, _| d.include?("error") }
+
+        expect(msg).to eq("Span [#{method}] error")
+        expect(trace_info[:'error.object']).to eq(thrown_exception)
+        expect(trace_info[:'error.object']).to eq(exception)
+      }
+    end
+
+    it 're-raise original exception' do
+      expect { respond_with { |env| raise Timeout::Error } }.to raise_error(Timeout::Error)
     end
   end
 
