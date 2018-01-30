@@ -13,17 +13,18 @@ module Rack
     # @param on_start_span [Proc, nil] A callback evaluated after a new span is created.
     # @param errors [Array<Class>] An array of error classes to be captured by the tracer
     #        as errors. Errors are **not** muted by the middleware, they're re-raised afterwards.
-    def initialize(app, tracer: OpenTracing.global_tracer, on_start_span: nil, errors: [StandardError])
+    def initialize(app, tracer: OpenTracing.global_tracer, on_start_span: nil, trust_incoming_span: true, errors: [StandardError])
       @app = app
       @tracer = tracer
       @on_start_span = on_start_span
+      @trust_incoming_span = trust_incoming_span
       @errors = errors
     end
 
     def call(env)
       method = env[REQUEST_METHOD]
 
-      context = @tracer.extract(OpenTracing::FORMAT_RACK, env)
+      context = @tracer.extract(OpenTracing::FORMAT_RACK, env) if @trust_incoming_span
       span = @tracer.start_span(method,
         child_of: context,
         tags: {
