@@ -7,12 +7,10 @@ RSpec.describe Rack::Tracer do
   let(:on_start_span) { spy }
   let(:on_finish_span) { spy }
 
-  let(:ok_response) { [200, {'Content-Type' => 'application/json'}, ['{"ok": true}']] }
+  let(:ok_response) { [200, { 'Content-Type' => 'application/json' }, ['{"ok": true}']] }
 
   let(:env) do
-    Rack::MockRequest.env_for('/test/this/route', {
-      method: method
-    })
+    Rack::MockRequest.env_for('/test/this/route', method: method)
   end
 
   let(:method) { 'POST' }
@@ -33,10 +31,12 @@ RSpec.describe Rack::Tracer do
     it 'starts a new trace' do
       respond_with { ok_response }
 
-      expect(logger.calls.map(&:first)).to eq([
-        "Span [#{method}] started",
-        "Span [#{method}] finished"
-      ])
+      expect(logger.calls.map(&:first)).to eq(
+        [
+          "Span [#{method}] started",
+          "Span [#{method}] finished"
+        ]
+      )
     end
 
     it 'passes span to downstream' do
@@ -47,7 +47,7 @@ RSpec.describe Rack::Tracer do
       end
     end
 
-    it_behaves_like 'calls on_start_span and on_finish_span callbacks'
+    include_examples 'calls on_start_span and on_finish_span callbacks'
   end
 
   context 'when already traced request' do
@@ -60,33 +60,37 @@ RSpec.describe Rack::Tracer do
       respond_with { ok_response }
       parent_span.finish
 
-      expect(logger.calls.map(&:first)).to eq([
-        "Span [#{parent_span_name}] started",
-        "Span [#{method}] started",
-        "Span [#{method}] finished",
-        "Span [#{parent_span_name}] finished"
-      ])
+      expect(logger.calls.map(&:first)).to eq(
+        [
+          "Span [#{parent_span_name}] started",
+          "Span [#{method}] started",
+          "Span [#{method}] finished",
+          "Span [#{parent_span_name}] finished"
+        ]
+      )
     end
 
     it 'passes span to downstream' do
       respond_with do |env|
         expect(env['rack.span']).to be_a(Logasm::Tracer::Span)
-        expect(env['rack.span'].context.parent_id).to_not be_nil
+        expect(env['rack.span'].context.parent_id).not_to be_nil
         ok_response
       end
     end
 
-    it_behaves_like 'calls on_start_span and on_finish_span callbacks'
+    include_examples 'calls on_start_span and on_finish_span callbacks'
   end
 
   context 'when already traced but untrusted request' do
     it 'starts a new trace' do
       respond_with(trust_incoming_span: false) { ok_response }
 
-      expect(logger.calls.map(&:first)).to eq([
-        "Span [#{method}] started",
-        "Span [#{method}] finished"
-      ])
+      expect(logger.calls.map(&:first)).to eq(
+        [
+          "Span [#{method}] started",
+          "Span [#{method}] finished"
+        ]
+      )
     end
 
     it 'does not pass incoming span to downstream' do
@@ -97,39 +101,51 @@ RSpec.describe Rack::Tracer do
       end
     end
 
-    it_behaves_like 'calls on_start_span and on_finish_span callbacks'
+    include_examples 'calls on_start_span and on_finish_span callbacks'
   end
 
   context 'when an exception bubbles-up through the middlewares' do
     it 'finishes the span' do
-      expect { respond_with { |env| raise Timeout::Error } }.to raise_error { |_|
-        msg, _ = logger.calls.last
+      respond_with_timeout_error = lambda do
+        respond_with { |_env| raise Timeout::Error }
+      end
+
+      expect(&respond_with_timeout_error).to raise_error do |_|
+        msg, = logger.calls.last
 
         expect(msg).to eq("Span [#{method}] finished")
-      }
+      end
     end
 
     it 'marks the span as failed' do
-      expect { respond_with { |env| raise Timeout::Error } }.to raise_error { |_|
+      respond_with_timeout_error = lambda do
+        respond_with { |_env| raise Timeout::Error }
+      end
+
+      expect(&respond_with_timeout_error).to raise_error do |_|
         _, trace_info = logger.calls.last
 
         expect(trace_info[:trace]['error']).to eq(true)
-      }
+      end
     end
 
     it 'logs the error' do
       exception = Timeout::Error.new
-      expect { respond_with { |env| raise exception } }.to raise_error { |thrown_exception|
-        msg, trace_info = logger.calls.find { |d, _| d.include?("error") }
+      respond_with_timeout_error = lambda do
+        respond_with { |_env| raise exception }
+      end
+
+      expect(&respond_with_timeout_error).to raise_error do |thrown_exception|
+        msg, trace_info = logger.calls.find { |d, _| d.include?('error') }
 
         expect(msg).to eq("Span [#{method}] error")
         expect(trace_info[:'error.object']).to eq(thrown_exception)
         expect(trace_info[:'error.object']).to eq(exception)
-      }
+      end
     end
 
     it 're-raise original exception' do
-      expect { respond_with { |env| raise Timeout::Error } }.to raise_error(Timeout::Error)
+      expect { respond_with { |_env| raise Timeout::Error } }.to raise_error(Timeout::Error)
     end
   end
 
@@ -145,10 +161,10 @@ RSpec.describe Rack::Tracer do
   end
 
   def inject(span_context, env)
-    carrier = Hash.new
+    carrier = {}
     tracer.inject(span_context, OpenTracing::FORMAT_RACK, carrier)
     carrier.each do |k, v|
-      env['HTTP_' + k.upcase.gsub('-', '_')] = v
+      env['HTTP_' + k.upcase.tr('-', '_')] = v
     end
   end
 end
