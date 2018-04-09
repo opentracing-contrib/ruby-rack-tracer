@@ -5,6 +5,7 @@ RSpec.describe Rack::Tracer do
   let(:logger) { ArrayLogger.new }
   let(:tracer) { Logasm::Tracer.new(logger) }
   let(:on_start_span) { spy }
+  let(:on_finish_span) { spy }
 
   let(:ok_response) { [200, {'Content-Type' => 'application/json'}, ['{"ok": true}']] }
 
@@ -15,6 +16,18 @@ RSpec.describe Rack::Tracer do
   end
 
   let(:method) { 'POST' }
+
+  shared_examples 'calls on_start_span and on_finish_span callbacks' do
+    it 'calls on_start_span callback' do
+      respond_with { ok_response }
+      expect(on_start_span).to have_received(:call).with(instance_of(Logasm::Tracer::Span))
+    end
+
+    it 'calls on_finish_span callback' do
+      respond_with { ok_response }
+      expect(on_finish_span).to have_received(:call).with(instance_of(Logasm::Tracer::Span))
+    end
+  end
 
   context 'when a new request' do
     it 'starts a new trace' do
@@ -34,10 +47,7 @@ RSpec.describe Rack::Tracer do
       end
     end
 
-    it 'calls on_start_span callback' do
-      respond_with { ok_response }
-      expect(on_start_span).to have_received(:call).with(instance_of(Logasm::Tracer::Span))
-    end
+    it_behaves_like 'calls on_start_span and on_finish_span callbacks'
   end
 
   context 'when already traced request' do
@@ -66,10 +76,7 @@ RSpec.describe Rack::Tracer do
       end
     end
 
-    it 'calls on_start_span callback' do
-      respond_with { ok_response }
-      expect(on_start_span).to have_received(:call).with(instance_of(Logasm::Tracer::Span))
-    end
+    it_behaves_like 'calls on_start_span and on_finish_span callbacks'
   end
 
   context 'when already traced but untrusted request' do
@@ -90,10 +97,7 @@ RSpec.describe Rack::Tracer do
       end
     end
 
-    it 'calls on_start_span callback' do
-      respond_with(trust_incoming_span: false) { ok_response }
-      expect(on_start_span).to have_received(:call).with(instance_of(Logasm::Tracer::Span))
-    end
+    it_behaves_like 'calls on_start_span and on_finish_span callbacks'
   end
 
   context 'when an exception bubbles-up through the middlewares' do
@@ -130,7 +134,13 @@ RSpec.describe Rack::Tracer do
   end
 
   def respond_with(trust_incoming_span: true, &app)
-    middleware = described_class.new(app, tracer: tracer, on_start_span: on_start_span, trust_incoming_span: trust_incoming_span)
+    middleware = described_class.new(
+      app,
+      tracer: tracer,
+      on_start_span: on_start_span,
+      on_finish_span: on_finish_span,
+      trust_incoming_span: trust_incoming_span
+    )
     middleware.call(env)
   end
 
