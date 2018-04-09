@@ -23,9 +23,11 @@ You can access the created span using
 env['rack.span']
 ```
 
-You can also add a start span callback
+You can also add start and finish span callbacks
 ```ruby
-use Rack::Tracer, on_start_span: Proc.new {|span| do_something(span) }
+use Rack::Tracer,
+    on_start_span: ->(span) { Thread.current[:root_span] = span },
+    on_finish_span: ->(_span) { Thread.current[:root_span] = nil }
 ```
 
 ## Development
@@ -42,4 +44,3 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/opentr
 ## License
 
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
-

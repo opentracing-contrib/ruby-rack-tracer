@@ -11,12 +11,14 @@ module Rack
     # @param tracer [OpenTracing::Tracer] A tracer to be used when start_span, and extract
     #        is called.
     # @param on_start_span [Proc, nil] A callback evaluated after a new span is created.
+    # @param on_finish_span [Proc, nil] A callback evaluated after a span is finished.
     # @param errors [Array<Class>] An array of error classes to be captured by the tracer
     #        as errors. Errors are **not** muted by the middleware, they're re-raised afterwards.
-    def initialize(app, tracer: OpenTracing.global_tracer, on_start_span: nil, trust_incoming_span: true, errors: [StandardError])
+    def initialize(app, tracer: OpenTracing.global_tracer, on_start_span: nil, on_finish_span: nil, trust_incoming_span: true, errors: [StandardError])
       @app = app
       @tracer = tracer
       @on_start_span = on_start_span
+      @on_finish_span = on_finish_span
       @trust_incoming_span = trust_incoming_span
       @errors = errors
     end
@@ -36,9 +38,7 @@ module Rack
         }
       )
 
-      if @on_start_span
-        @on_start_span.call(span)
-      end
+      @on_start_span.call(span) if @on_start_span
 
       env['rack.span'] = span
 
@@ -54,7 +54,11 @@ module Rack
       span.log(event: 'error', :'error.object' => e)
       raise
     ensure
-      span.finish
+      begin
+        span.finish
+      ensure
+        @on_finish_span.call(span) if @on_finish_span
+      end
     end
 
     private
