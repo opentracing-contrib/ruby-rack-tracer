@@ -1,0 +1,12 @@
+version: '3.4'
+services:
+  test: &base
+    image: ruby-faraday-tracer:1.1.0
+    container_name: ruby-faraday-tracer-test
+    build: .
+    volumes:
+      - .:/usr/local/src
+    command: bundle exec rspec
+  console:
+    <<: *base
+    command: ./bin/console
