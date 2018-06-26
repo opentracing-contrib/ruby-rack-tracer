@@ -56,7 +56,13 @@ module Rack
       end
     rescue *@errors => e
       span.set_tag('error', true)
-      span.log(event: 'error', :'error.object' => e)
+      span.log_kv(
+        event: 'error',
+        :'error.kind' => e.class.to_s,
+        :'error.object' => e,
+        message: e.message,
+        stack: e.backtrace.join("\n")
+      )
       raise
     ensure
       begin
