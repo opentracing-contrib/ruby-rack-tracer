@@ -13,15 +13,3 @@ RSpec.configure do |config|
     c.syntax = :expect
   end
 end
-
-class ArrayLogger
-  attr_accessor :calls
-
-  def initialize
-    @calls = []
-  end
-
-  def info(*args)
-    @calls << args
-  end
-end

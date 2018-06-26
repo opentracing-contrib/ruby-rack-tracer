@@ -2,8 +2,7 @@ require 'spec_helper'
 require 'timeout'
 
 RSpec.describe Rack::Tracer do
-  let(:logger) { ArrayLogger.new }
-  let(:tracer) { Test::Tracer.new(logger: logger) }
+  let(:tracer) { Test::Tracer.new }
   let(:on_start_span) { spy }
   let(:on_finish_span) { spy }
 
