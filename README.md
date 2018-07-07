@@ -23,11 +23,17 @@ You can access the created span using
 env['rack.span']
 ```
 
+or you can use
+```ruby
+OpenTracing.active_span
+```
+See [opentracing-ruby](https://github.com/opentracing/opentracing-ruby) for more information how active_span works and what are its limitations.
+
 You can also add start and finish span callbacks
 ```ruby
 use Rack::Tracer,
-    on_start_span: ->(span) { Thread.current[:root_span] = span },
-    on_finish_span: ->(_span) { Thread.current[:root_span] = nil }
+    on_start_span: ->(span) { do_something(span) },
+    on_finish_span: ->(_span) { do_something(span) }
 ```
 
 ## Development

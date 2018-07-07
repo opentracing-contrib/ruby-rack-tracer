@@ -34,7 +34,7 @@ module Rack
       method = env[REQUEST_METHOD]
 
       context = @tracer.extract(OpenTracing::FORMAT_RACK, env) if @trust_incoming_span
-      span = @tracer.start_span(
+      scope = @tracer.start_active_span(
         method,
         child_of: context,
         tags: {
@@ -45,6 +45,7 @@ module Rack
           'http.uri' => env[REQUEST_URI] # For zipkin, not OT convention
         }
       )
+      span = scope.span
 
       @on_start_span.call(span) if @on_start_span
 
@@ -68,7 +69,7 @@ module Rack
       raise
     ensure
       begin
-        span.finish
+        scope.close
       ensure
         @on_finish_span.call(span) if @on_finish_span
       end

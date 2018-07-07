@@ -46,6 +46,14 @@ RSpec.describe Rack::Tracer do
       end
     end
 
+    it 'marks the span as active' do
+      respond_with do |_env|
+        span = tracer.spans.last
+        expect(tracer.active_span).to eq(span)
+        ok_response
+      end
+    end
+
     include_examples 'calls on_start_span and on_finish_span callbacks'
   end
 
@@ -71,6 +79,14 @@ RSpec.describe Rack::Tracer do
         span = tracer.spans.last
         expect(env['rack.span']).to eq(span)
         expect(env['rack.span'].context.parent_id).to eq(parent_span.context.span_id)
+        ok_response
+      end
+    end
+
+    it 'marks the span as active' do
+      respond_with do |_env|
+        span = tracer.spans.last
+        expect(tracer.active_span).to eq(span)
         ok_response
       end
     end
