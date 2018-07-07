@@ -20,3 +20,9 @@ RSpec/ExampleLength:
 
 RSpec/MultipleExpectations:
   Enabled: no
+
+Style/FrozenStringLiteralComment:
+  Enabled: yes
+  EnforcedStyle: always
+  Include:
+    - 'lib/**/*'
