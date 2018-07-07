@@ -2,7 +2,7 @@ require 'spec_helper'
 require 'timeout'
 
 RSpec.describe Rack::Tracer do
-  let(:tracer) { Test::Tracer.new }
+  let(:tracer) { OpenTracingTestTracer.build }
   let(:on_start_span) { spy }
   let(:on_finish_span) { spy }
 
@@ -32,14 +32,16 @@ RSpec.describe Rack::Tracer do
     it 'starts a new trace' do
       respond_with { ok_response }
 
-      expect(tracer).to have_span(method).finished
+      expect(tracer.spans.count).to eq(1)
+      span = tracer.spans[0]
+      expect(span).to be_finished
     end
 
     it 'passes span to downstream' do
       respond_with do |env|
         span = tracer.spans.last
         expect(env['rack.span']).to eq(span)
-        expect(env['rack.span']).to be_child_of(nil)
+        expect(env['rack.span'].context.parent_id).to eq(nil)
         ok_response
       end
     end
@@ -57,15 +59,18 @@ RSpec.describe Rack::Tracer do
       respond_with { ok_response }
       parent_span.finish
 
-      expect(tracer).to have_span(parent_span_name).finished
-      expect(tracer).to have_span(method).finished.child_of(parent_span_name)
+      expect(parent_span).to be_finished
+      span = tracer.spans.last
+      expect(span).to be_finished
+      expect(span.operation_name).to eq(method)
+      expect(span.context.parent_id).to eq(parent_span.context.span_id)
     end
 
     it 'passes span to downstream' do
       respond_with do |env|
         span = tracer.spans.last
         expect(env['rack.span']).to eq(span)
-        expect(env['rack.span']).to be_child_of(parent_span_name)
+        expect(env['rack.span'].context.parent_id).to eq(parent_span.context.span_id)
         ok_response
       end
     end
@@ -76,14 +81,18 @@ RSpec.describe Rack::Tracer do
   context 'when already traced but untrusted request' do
     it 'starts a new trace' do
       respond_with(trust_incoming_span: false) { ok_response }
-      expect(tracer).to have_span(method).finished.child_of(nil)
+
+      expect(tracer.spans.count).to eq(1)
+      span = tracer.spans[0]
+      expect(span).to be_finished
+      expect(span.context.parent_id).to eq(nil)
     end
 
     it 'does not pass incoming span to downstream' do
       respond_with(trust_incoming_span: false) do |env|
         span = tracer.spans.last
         expect(env['rack.span']).to eq(span)
-        expect(env['rack.span']).to be_child_of(nil)
+        expect(env['rack.span'].context.parent_id).to eq(nil)
         ok_response
       end
     end
@@ -98,7 +107,9 @@ RSpec.describe Rack::Tracer do
       end
 
       expect(&respond_with_timeout_error).to raise_error do |_|
-        expect(tracer).to have_span(method).finished
+        span = tracer.spans[0]
+        expect(span.operation_name).to eq(method)
+        expect(span).to be_finished
       end
     end
 
@@ -108,7 +119,9 @@ RSpec.describe Rack::Tracer do
       end
 
       expect(&respond_with_timeout_error).to raise_error do |_|
-        expect(tracer).to have_span(method).with_tags('error' => true)
+        span = tracer.spans[0]
+        expect(span.operation_name).to eq(method)
+        expect(span.tags).to include(error: true)
       end
     end
 
@@ -119,12 +132,16 @@ RSpec.describe Rack::Tracer do
       end
 
       expect(&respond_with_timeout_error).to raise_error do |thrown_exception|
-        expect(tracer).to have_span(method).with_logs(
-          event: 'error',
-          :'error.kind' => thrown_exception.class.to_s,
-          :'error.object' => thrown_exception,
-          message: thrown_exception.message,
-          stack: thrown_exception.backtrace.join("\n")
+        span = tracer.spans[0]
+        expect(span.operation_name).to eq(method)
+        expect(span.logs).to include(
+          a_hash_including(
+            event: 'error',
+            :'error.kind' => thrown_exception.class.to_s,
+            :'error.object' => thrown_exception,
+            message: thrown_exception.message,
+            stack: thrown_exception.backtrace.join("\n")
+          )
         )
       end
     end

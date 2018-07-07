@@ -1,9 +1,7 @@
 require 'bundler/setup'
 require 'rack/tracer'
 require 'rack/mock'
-require 'test/tracer'
-require 'tracing/matchers'
-require 'support/test_tracer_ext'
+require 'opentracing_test_tracer'
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
