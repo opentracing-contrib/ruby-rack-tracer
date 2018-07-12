@@ -26,6 +26,18 @@ RSpec.describe Rack::Tracer do
       span = tracer.spans.last
       expect(on_finish_span).to have_received(:call).with(span)
     end
+
+    context 'when env has sinatra route set' do
+      let(:route) { 'POST /users/:id' }
+
+      before { env['sinatra.route'] = route }
+
+      it 'adds the route to operation name' do
+        respond_with { ok_response }
+        span = tracer.spans.last
+        expect(span.operation_name).to eq(route)
+      end
+    end
   end
 
   context 'when a new request' do

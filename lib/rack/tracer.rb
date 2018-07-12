@@ -54,7 +54,7 @@ module Rack
         span.set_tag('http.status_code', status_code)
 
         route = route_from_env(env)
-        span.set_tag('route', route) if route
+        span.operation_name = route if route
       end
     rescue *@errors => e
       span.set_tag('error', true)
@@ -77,8 +77,7 @@ module Rack
     private
 
     def route_from_env(env)
-      route = env['sinatra.route']
-      route.split(' ').last if route
+      env['sinatra.route']
     end
   end
 end
