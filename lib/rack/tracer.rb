@@ -41,8 +41,7 @@ module Rack
           'component' => 'rack',
           'span.kind' => 'server',
           'http.method' => method,
-          'http.url' => env[REQUEST_URI],
-          'http.uri' => env[REQUEST_URI] # For zipkin, not OT convention
+          'http.url' => env[REQUEST_URI]
         }
       )
       span = scope.span
