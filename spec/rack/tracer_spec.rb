@@ -149,7 +149,7 @@ RSpec.describe Rack::Tracer do
       expect(&respond_with_timeout_error).to raise_error do |_|
         span = tracer.spans[0]
         expect(span.operation_name).to eq(method)
-        expect(span.tags).to include(error: true)
+        expect(span.tags).to include('error' => true)
       end
     end
 
