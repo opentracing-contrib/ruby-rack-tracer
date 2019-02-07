@@ -77,7 +77,11 @@ module Rack
     private
 
     def route_from_env(env)
-      env['sinatra.route']
+      if (sinatra_route = env['sinatra.route'])
+        sinatra_route
+      elsif (rails_controller = env['action_controller.instance'])
+        "#{env[REQUEST_METHOD]} #{rails_controller.controller_name}/#{rails_controller.action_name}"
+      end
     end
   end
 end

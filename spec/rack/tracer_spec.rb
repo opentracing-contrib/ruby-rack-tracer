@@ -38,6 +38,24 @@ RSpec.describe Rack::Tracer do
         expect(span.operation_name).to eq(route)
       end
     end
+
+    context 'when env has action_controller.instance set' do
+      let(:route) { 'POST users/create' }
+
+      before do
+        # rubocop:disable RSpec/VerifiedDoubles - not going to pull the whole rails as devel dependency for this
+        env['action_controller.instance'] = double('UsersController',
+                                                   controller_name: 'users',
+                                                   action_name: 'create')
+        # rubocop:enable RSpec/VerifiedDoubles
+      end
+
+      it 'adds the controller/action to operation name' do
+        respond_with { ok_response }
+        span = tracer.spans.last
+        expect(span.operation_name).to eq(route)
+      end
+    end
   end
 
   context 'when a new request' do
