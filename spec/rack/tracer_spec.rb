@@ -56,6 +56,41 @@ RSpec.describe Rack::Tracer do
         expect(span.operation_name).to eq(route)
       end
     end
+
+    context 'when env has grape routing args set' do
+      let(:route) { 'POST /users/:id' }
+
+      before do
+        # rubocop:disable RSpec/VerifiedDoubles
+        env['grape.routing_args'] = { route_info: double(path: route) }
+        # rubocop:enable RSpec/VerifiedDoubles
+      end
+
+      it 'adds the route path to operation name' do
+        respond_with { ok_response }
+        span = tracer.spans.last
+        expect(span.operation_name).to eq(route)
+      end
+    end
+
+    context 'when env has grape rack routing args set' do
+      let(:route) { 'POST /users/:id' }
+
+      before do
+        class RouteInfo
+          attr_accessor :options
+        end
+        info = RouteInfo.new
+        info.options = { path: route }
+        env['rack.routing_args'] = { route_info: info }
+      end
+
+      it 'adds the route path to operation name' do
+        respond_with { ok_response }
+        span = tracer.spans.last
+        expect(span.operation_name).to eq(route)
+      end
+    end
   end
 
   context 'when a new request' do
