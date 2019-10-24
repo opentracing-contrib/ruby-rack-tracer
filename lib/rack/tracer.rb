@@ -21,16 +21,21 @@ module Rack
                    on_start_span: nil,
                    on_finish_span: nil,
                    trust_incoming_span: true,
-                   errors: [StandardError])
+                   errors: [StandardError],
+                   trace_if: nil)
       @app = app
       @tracer = tracer
       @on_start_span = on_start_span
       @on_finish_span = on_finish_span
       @trust_incoming_span = trust_incoming_span
       @errors = errors
+      @trace_if = trace_if
     end
 
     def call(env)
+      skip_request = !(@trace_if.nil? || @trace_if.call(env))
+      return @app.call(env) if skip_request
+
       method = env[REQUEST_METHOD]
 
       context = @tracer.extract(OpenTracing::FORMAT_RACK, env) if @trust_incoming_span
@@ -57,6 +62,7 @@ module Rack
         span.operation_name = route if route
       end
     rescue *@errors => e
+      raise if skip_request
       span.set_tag('error', true)
       span.log_kv(
         event: 'error',
@@ -67,10 +73,12 @@ module Rack
       )
       raise
     ensure
-      begin
-        scope.close
-      ensure
-        @on_finish_span.call(span) if @on_finish_span
+      unless skip_request
+        begin
+          scope&.close
+        ensure
+          @on_finish_span.call(span) if @on_finish_span
+        end
       end
     end
 
