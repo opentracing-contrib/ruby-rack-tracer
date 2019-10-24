@@ -81,6 +81,17 @@ module Rack
         sinatra_route
       elsif (rails_controller = env['action_controller.instance'])
         "#{env[REQUEST_METHOD]} #{rails_controller.controller_name}/#{rails_controller.action_name}"
+      elsif (grape_route_args = env['grape.routing_args'] || env['rack.routing_args'])
+        grape_route_from_args(grape_route_args)
+      end
+    end
+
+    def grape_route_from_args(route_args)
+      route_info = route_args[:route_info]
+      if route_info.respond_to?(:path)
+        route_info.path
+      elsif (rack_route_options = route_info.instance_variable_get(:@options))
+        rack_route_options[:path]
       end
     end
   end
