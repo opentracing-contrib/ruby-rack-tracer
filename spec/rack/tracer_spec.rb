@@ -232,6 +232,17 @@ RSpec.describe Rack::Tracer do
     end
   end
 
+  context 'when the rack app fails with http errors' do
+    let(:bad_response) { [400, { 'Content-Type' => 'application/json' }, ['{"ok": false}']] }
+
+    it 'reports the request as an error' do
+      respond_with { bad_response }
+      span = tracer.spans.last
+      expect(span.operation_name).to eq(method)
+      expect(span.tags).to include('error' => true)
+    end
+  end
+
   def respond_with(trust_incoming_span: true, &app)
     middleware = described_class.new(
       app,
